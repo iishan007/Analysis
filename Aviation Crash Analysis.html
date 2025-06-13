@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aviation Accidents Analysis (1975-2025)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #003f5c;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 320px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 400px;
+            }
+        }
+        /* Specific height for the airline chart to ensure all labels are visible */
+        #airlinesChartCanvasContainer {
+            height: 700px; /* Increased height */
+            max-height: 800px; /* Increased max-height */
+        }
+        @media (min-width: 768px) {
+            #airlinesChartCanvasContainer {
+                height: 800px; /* Further increased for larger screens */
+                max-height: 900px;
+            }
+        }
+
+        .text-shadow {
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.4);
+        }
+        .brand-orange { color: #ffa600; }
+        .brand-pink { color: #ef5675; }
+        .brand-purple { color: #7a5195; }
+        .flow-arrow {
+            content: '➔';
+            font-size: 2rem;
+            color: #7a5195;
+            margin: 0 1rem;
+        }
+        .flow-item:not(:last-child)::after {
+            content: '➔';
+            font-size: 1.5rem;
+            color: #7a5195;
+            margin: 0 1rem;
+        }
+        @media (max-width: 767px) {
+            .flow-item:not(:last-child)::after {
+                content: '⬇';
+                display: block;
+                margin: 0.5rem auto;
+            }
+        }
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #ffa600;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="text-gray-200">
+
+    <div class="container mx-auto p-4 md:p-8">
+
+        <header class="text-center mb-12">
+            <h1 class="text-4xl md:text-6xl font-extrabold text-white text-shadow mb-2">50 Years of Aviation Tragedies</h1>
+            <p class="text-lg md:text-xl text-gray-300">An Analysis of the 100 Deadliest Air Disasters (1975-2025)</p>
+        </header>
+
+        <section class="mb-12 bg-white/10 backdrop-blur-sm rounded-xl p-6 shadow-2xl text-center">
+             <h2 class="text-2xl font-bold mb-4 brand-orange">A Paradox of Progress</h2>
+            <p class="max-w-4xl mx-auto text-gray-300">Over the past five decades, air travel has become statistically safer than ever before. Yet, the potential for catastrophic, high-fatality events persists. This analysis explores the 100 deadliest accidents to understand the evolving nature of aviation risk. The total death toll from just these 100 incidents is a stark reminder of the stakes.</p>
+            <div class="mt-6">
+                <p class="text-6xl md:text-8xl font-black brand-pink text-shadow" id="totalFatalities">26,000+</p>
+                <p class="text-lg font-bold">Lives Lost in the 100 Deadliest Incidents</p>
+            </div>
+        </section>
+
+        <main class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+            <div class="bg-white/10 backdrop-blur-sm rounded-xl p-6 shadow-2xl">
+                <h3 class="text-2xl font-bold mb-4 text-center brand-orange">Deadliest Incidents by Decade</h3>
+                <p class="text-sm text-gray-400 mb-4 text-center">The data shows a concentration of high-fatality events in the 1980s and 1990s as air travel expanded rapidly. While the frequency has decreased, the potential for mass-casualty events remains, as seen in the 2020s.</p>
+                <div class="chart-container">
+                    <canvas id="crashesByDecadeChart"></canvas>
+                </div>
+            </div>
+
+            <div class="bg-white/10 backdrop-blur-sm rounded-xl p-6 shadow-2xl">
+                <h3 class="text-2xl font-bold mb-4 text-center brand-orange">Primary Causes of Disaster</h3>
+                <p class="text-sm text-gray-400 mb-4 text-center">Analysis reveals a shift in accident causality. While pilot error and technical failure remain significant, external factors like terrorism and deliberate acts have caused some of the most devastating losses.</p>
+                <div class="chart-container">
+                    <canvas id="causesChart"></canvas>
+                </div>
+            </div>
+
+            <div class="lg:col-span-2 bg-white/10 backdrop-blur-sm rounded-xl p-6 shadow-2xl">
+                <h3 class="text-2xl font-bold mb-4 text-center brand-orange">Manufacturer Involvement in Incidents</h3>
+                <p class="text-sm text-gray-400 mb-4 text-center">The prevalence of certain manufacturers in this dataset often correlates with their historical market dominance and the sheer number of their aircraft in service. Every major incident leads to intense scrutiny and safety improvements across the industry.</p>
+                <div class="chart-container h-96 md:h-[500px]">
+                    <canvas id="manufacturerChart"></canvas>
+                </div>
+                <button id="generateInsightsBtn" class="mt-4 px-6 py-3 bg-ffa600 text-white font-bold rounded-lg shadow-lg hover:bg-ff764a transition-colors duration-300 w-full md:w-auto mx-auto block">
+                    Generate Manufacturer Insights ✨
+                </button>
+                <div id="manufacturerInsights" class="mt-6 p-4 bg-gray-800/50 rounded-lg hidden">
+                    <p class="text-lg font-semibold mb-2 text-white" id="insightsTitle"></p>
+                    <div id="insightsContent" class="text-gray-300 text-sm"></div>
+                    <div id="insightsLoading" class="flex justify-center items-center mt-4 hidden">
+                        <div class="spinner"></div>
+                        <p class="ml-2 text-gray-400">Generating insights...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="lg:col-span-2 bg-white/10 backdrop-blur-sm rounded-xl p-6 shadow-2xl">
+                <h3 class="text-2xl font-bold mb-4 text-center brand-orange">Geographical Hotspots of Top 100 Crashes</h3>
+                <p class="text-sm text-gray-400 mb-4 text-center">Fatal accidents are globally distributed, but regions with high traffic volume, challenging terrain, or historically developing regulatory oversight show higher concentrations of incidents.</p>
+                 <div class="chart-container h-80 md:h-[450px]">
+                    <canvas id="regionChart"></canvas>
+                </div>
+            </div>
+
+            <div class="lg:col-span-2 bg-white/10 backdrop-blur-sm rounded-xl p-6 shadow-2xl">
+                <h3 class="text-2xl font-bold mb-4 text-center brand-orange">Incidents by Airline</h3>
+                <p class="text-sm text-gray-400 mb-4 text-center">While many factors contribute to accidents, the frequency of an airline appearing in this list often reflects its operational scale and the challenges faced over decades. Each incident serves as a critical lesson for the entire industry.</p>
+                <div id="airlinesChartCanvasContainer" class="chart-container">
+                    <canvas id="airlinesChart"></canvas>
+                </div>
+            </div>
+
+            <div class="lg:col-span-2 bg-brand-pink/20 backdrop-blur-sm rounded-xl p-6 shadow-2xl border-l-4 border-brand-pink">
+                <h3 class="text-3xl font-bold mb-4 text-center text-white">Case Study: Air India Flight 171</h3>
+                <p class="text-sm text-gray-200 mb-2 text-center">June 12, 2025 - The Dreamliner's First Fatal Crash</p>
+                <p class="text-gray-300 mb-6 text-center max-w-3xl mx-auto">The crash of the Boeing 787-8 shortly after takeoff from Ahmedabad marked a tragic milestone. It ended the Dreamliner's remarkable fatality-free record and initiated a global investigation into the modern aircraft's potential vulnerabilities, reminding the industry that vigilance is always required.</p>
+                
+                <div class="flex flex-col md:flex-row justify-around items-center text-center my-6">
+                    <div class="mb-4 md:mb-0">
+                        <p class="text-5xl font-black text-white">269+</p>
+                        <p class="font-bold">Total Fatalities</p>
+                    </div>
+                     <div class="mb-4 md:mb-0">
+                        <p class="text-5xl font-black text-white">1</p>
+                        <p class="font-bold">Survivor</p>
+                    </div>
+                    <div>
+                        <p class="text-5xl font-black text-white">~625<span class="text-3xl">ft</span></p>
+                        <p class="font-bold">Altitude at Signal Loss</p>
+                    </div>
+                </div>
+
+                <div class="mt-8">
+                    <h4 class="text-xl font-bold text-center mb-4 text-white">Sequence of Events</h4>
+                    <div class="flex flex-col md:flex-row justify-center items-center text-lg font-semibold text-center">
+                        <div class="flow-item p-3 bg-black/20 rounded-lg">🛫 Takeoff</div>
+                        <div class="flow-item p-3 bg-black/20 rounded-lg">🚨 Mayday Call</div>
+                        <div class="flow-item p-3 bg-black/20 rounded-lg">📡 Signal Lost</div>
+                        <div class="flow-item p-3 bg-black/20 rounded-lg">💥 Ground Impact</div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+        
+        <footer class="text-center mt-12 text-gray-400 text-xs">
+            <p>Data sourced and synthesized from the "Global Aviation Fatal Accidents: A 50-Year Analytical Review (1975-2025)" report.</p>
+            <p>This infographic is for analytical and educational purposes only.</p>
+        </footer>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const crashData = [
+                { year: 2001, cause: 'Terrorism', manufacturer: 'Boeing', region: 'North America', fatalities: 1700, airline: 'American Airlines' },
+                { year: 2001, cause: 'Terrorism', manufacturer: 'Boeing', region: 'North America', fatalities: 1000, airline: 'United Airlines' },
+                { year: 1977, cause: 'Pilot/ATC Error', manufacturer: 'Boeing', region: 'Europe', fatalities: 583, airline: 'Pan Am / KLM' },
+                { year: 1985, cause: 'Mechanical Failure', manufacturer: 'Boeing', region: 'Asia', fatalities: 520, airline: 'Japan Air Lines' },
+                { year: 1996, cause: 'Pilot/ATC Error', manufacturer: ['Boeing', 'Ilyushin'], region: 'Asia', fatalities: 349, airline: 'Saudia / Kazakhstan Airlines' },
+                { year: 1985, cause: 'Terrorism', manufacturer: 'Boeing', region: 'Atlantic', fatalities: 329, airline: 'Air India' },
+                { year: 1980, cause: 'Mechanical Failure', manufacturer: 'Lockheed', region: 'Middle East', fatalities: 301, airline: 'Saudia' },
+                { year: 2014, cause: 'Hostile Action', manufacturer: 'Boeing', region: 'Europe', fatalities: 298, airline: 'Malaysia Airlines' },
+                { year: 1988, cause: 'Hostile Action', manufacturer: 'Airbus', region: 'Middle East', fatalities: 290, airline: 'Iran Air' },
+                { year: 2003, cause: 'Weather', manufacturer: 'Ilyushin', region: 'Middle East', fatalities: 275, airline: 'Iranian Revolutionary Guard Corps Aerospace Force' },
+                { year: 1979, cause: 'Mechanical Failure', manufacturer: 'McDonnell Douglas', region: 'North America', fatalities: 273, airline: 'American Airlines' },
+                { year: 1988, cause: 'Terrorism', manufacturer: 'Boeing', region: 'Europe', fatalities: 270, airline: 'Pan Am' },
+                { year: 2025, cause: 'Undetermined', manufacturer: 'Boeing', region: 'Asia', fatalities: 269, airline: 'Air India' },
+                { year: 1983, cause: 'Hostile Action', manufacturer: 'Boeing', region: 'Asia', fatalities: 269, airline: 'Korean Air Lines' },
+                { year: 2001, cause: 'Pilot/ATC Error', manufacturer: 'Airbus', region: 'North America', fatalities: 265, airline: 'American Airlines' },
+                { year: 1994, cause: 'Pilot/ATC Error', manufacturer: 'Airbus', region: 'Asia', fatalities: 264, airline: 'China Airlines' },
+                { year: 1991, cause: 'Mechanical Failure', manufacturer: 'Douglas', region: 'Middle East', fatalities: 261, airline: 'Nigeria Airways' },
+                { year: 2018, cause: 'Mechanical Failure', manufacturer: 'Ilyushin', region: 'Africa', fatalities: 257, airline: 'Algerian Air Force' },
+                { year: 1979, cause: 'CFIT', manufacturer: 'McDonnell Douglas', region: 'Antarctica', fatalities: 257, airline: 'Air New Zealand' },
+                { year: 1985, cause: 'Undetermined', manufacturer: 'McDonnell Douglas', region: 'North America', fatalities: 256, airline: 'Arrow Air' },
+                { year: 1996, cause: 'Pilot/ATC Error', manufacturer: 'Antonov', region: 'Africa', fatalities: 251, airline: 'Air Africa' },
+                { year: 2014, cause: 'Undetermined', manufacturer: 'Boeing', region: 'Indian Ocean', fatalities: 239, airline: 'Malaysia Airlines' },
+                { year: 1997, cause: 'CFIT', manufacturer: 'Airbus', region: 'Asia', fatalities: 234, airline: 'Garuda Indonesia' },
+                { year: 1996, cause: 'Mechanical Failure', manufacturer: 'Boeing', region: 'Atlantic', fatalities: 230, airline: 'Trans World Airlines' },
+                { year: 1998, cause: 'Mechanical Failure', manufacturer: 'McDonnell Douglas', region: 'Atlantic', fatalities: 229, airline: 'Swissair' },
+                { year: 1997, cause: 'CFIT', manufacturer: 'Boeing', region: 'Oceania', fatalities: 229, airline: 'Korean Air' },
+                { year: 2009, cause: 'Pilot/ATC Error', manufacturer: 'Airbus', region: 'Atlantic', fatalities: 228, airline: 'Air France' },
+                { year: 2002, cause: 'Mechanical Failure', manufacturer: 'Boeing', region: 'Asia', fatalities: 225, airline: 'China Airlines' },
+                { year: 2015, cause: 'Terrorism', manufacturer: 'Airbus', region: 'Africa', fatalities: 224, airline: 'Metrojet' },
+                { year: 1991, cause: 'Mechanical Failure', manufacturer: 'Boeing', region: 'Asia', fatalities: 223, airline: 'Lauda Air' },
+                { year: 1999, cause: 'Pilot/ATC Error', manufacturer: 'Boeing', region: 'Atlantic', fatalities: 217, airline: 'EgyptAir' },
+                { year: 1978, cause: 'Pilot/ATC Error', manufacturer: 'Boeing', region: 'Asia', fatalities: 213, airline: 'Air India' },
+                { year: 1998, cause: 'Pilot/ATC Error', manufacturer: 'Airbus', region: 'Asia', fatalities: 202, airline: 'China Airlines' },
+                { year: 1985, cause: 'Pilot/ATC Error', manufacturer: 'Tupolev', region: 'Asia', fatalities: 200, airline: 'Aeroflot' },
+                { year: 2007, cause: 'Pilot/ATC Error', manufacturer: 'Airbus', region: 'South America', fatalities: 199, airline: 'TAM Airlines' },
+                { year: 2018, cause: 'Mechanical Failure', manufacturer: 'Boeing', region: 'Asia', fatalities: 189, airline: 'Lion Air' },
+                { year: 2001, cause: 'Terrorism', manufacturer: 'Boeing', region: 'North America', fatalities: 189, airline: 'American Airlines' },
+                { year: 1996, cause: 'Pilot/ATC Error', manufacturer: 'Boeing', region: 'Atlantic', fatalities: 189, airline: 'Birgenair' },
+                { year: 1975, cause: 'CFIT', manufacturer: 'Boeing', region: 'Africa', fatalities: 188, airline: 'Royal Air Maroc' },
+                { year: 1987, cause: 'Mechanical Failure', manufacturer: 'Ilyushin', region: 'Europe', fatalities: 183, airline: 'LOT Polish Airlines' },
+                { year: 1978, cause: 'CFIT', manufacturer: 'Douglas', region: 'Asia', fatalities: 183, airline: 'Loftleiðir' },
+                { year: 1983, cause: 'CFIT', manufacturer: 'Boeing', region: 'Europe', fatalities: 181, airline: 'Avianca' },
+                { year: 1981, cause: 'CFIT', manufacturer: 'McDonnell Douglas', region: 'Europe', fatalities: 180, airline: 'Inex-Adria Aviopromet' },
+                { year: 2024, cause: 'Mechanical Failure', manufacturer: 'Boeing', region: 'Asia', fatalities: 179, airline: 'Jeju Air' },
+                { year: 1984, cause: 'Pilot/ATC Error', manufacturer: 'Tupolev', region: 'Asia', fatalities: 178, airline: 'Aeroflot' },
+                { year: 1979, cause: 'Pilot/ATC Error', manufacturer: 'Tupolev', region: 'Europe', fatalities: 178, airline: 'Aeroflot' },
+                { year: 2020, cause: 'Hostile Action', manufacturer: 'Boeing', region: 'Middle East', fatalities: 176, airline: 'Ukraine International Airlines' },
+                { year: 1989, cause: 'CFIT', manufacturer: 'McDonnell Douglas', region: 'South America', fatalities: 176, airline: 'Surinam Airways' },
+                { year: 1976, cause: 'Pilot/ATC Error', manufacturer: ['Hawker Siddeley', 'McDonnell Douglas'], region: 'Europe', fatalities: 176, airline: 'British Airways / Inex-Adria Aviopromet' },
+                { year: 2006, cause: 'Pilot/ATC Error', manufacturer: 'Tupolev', region: 'Europe', fatalities: 170, airline: 'Pulkovo Aviation Enterprise' },
+                { year: 1989, cause: 'Terrorism', manufacturer: 'McDonnell Douglas', region: 'Africa', fatalities: 170, airline: 'Union de Transports Aériens' },
+                { year: 2000, cause: 'Pilot/ATC Error', manufacturer: 'Airbus', region: 'Africa', fatalities: 169, airline: 'Kenya Airways' },
+                { year: 2009, cause: 'Mechanical Failure', manufacturer: 'Tupolev', region: 'Middle East', fatalities: 168, airline: 'Caspian Airlines' },
+                { year: 1992, cause: 'CFIT', manufacturer: 'Airbus', region: 'Asia', fatalities: 167, airline: 'Pakistan International Airlines' },
+                { year: 1986, cause: 'Mechanical Failure', manufacturer: 'Boeing', region: 'North America', fatalities: 167, airline: 'Mexicana de Aviación' },
+                { year: 1980, cause: 'Weather', manufacturer: 'Tupolev', region: 'Asia', fatalities: 166, airline: 'Aeroflot' },
+                { year: 2014, cause: 'Pilot/ATC Error', manufacturer: 'Airbus', region: 'Asia', fatalities: 162, airline: 'Indonesia AirAsia' },
+                { year: 2005, cause: 'Pilot/ATC Error', manufacturer: 'McDonnell Douglas', region: 'South America', fatalities: 160, airline: 'West Caribbean Airways' },
+                { year: 1994, cause: 'Mechanical Failure', manufacturer: 'Tupolev', region: 'Asia', fatalities: 160, airline: 'China Northwest Airlines' },
+                { year: 2012, cause: 'Mechanical Failure', manufacturer: 'McDonnell Douglas', region: 'Africa', fatalities: 159, airline: 'Dana Air' },
+                { year: 1995, cause: 'CFIT', manufacturer: 'Boeing', region: 'South America', fatalities: 159, airline: 'American Airlines' },
+                { year: 1992, cause: 'Pilot/ATC Error', manufacturer: ['Boeing', 'Mikoyan-Gurevich'], region: 'Africa', fatalities: 159, airline: 'Libyan Arab Airlines / Libyan Air Force' },
+                { year: 1992, cause: 'Mechanical Failure', manufacturer: 'Lockheed', region: 'Africa', fatalities: 159, airline: 'Nigerian Air Force' },
+                { year: 1987, cause: 'Mechanical Failure', manufacturer: 'Boeing', region: 'Indian Ocean', fatalities: 159, airline: 'South African Airways' },
+                { year: 2010, cause: 'Pilot/ATC Error', manufacturer: 'Boeing', region: 'Asia', fatalities: 158, airline: 'Air India Express' },
+                { year: 2019, cause: 'Mechanical Failure', manufacturer: 'Boeing', region: 'Africa', fatalities: 157, airline: 'Ethiopian Airlines' },
+                { year: 1987, cause: 'Pilot/ATC Error', manufacturer: 'McDonnell Douglas', region: 'North America', fatalities: 156, airline: 'Northwest Airlines' },
+                { year: 1979, cause: 'Mechanical Failure', manufacturer: 'Boeing', region: 'Middle East', fatalities: 156, airline: 'Pakistan International Airlines' },
+                { year: 2008, cause: 'Pilot/ATC Error', manufacturer: 'McDonnell Douglas', region: 'Europe', fatalities: 154, airline: 'Spanair' },
+                { year: 2006, cause: 'Pilot/ATC Error', manufacturer: ['Boeing', 'Embraer'], region: 'South America', fatalities: 154, airline: 'Gol Transportes Aéreos / ExcelAire' },
+                { year: 1976, cause: 'CFIT', manufacturer: 'Boeing', region: 'Europe', fatalities: 154, airline: 'Turkish Airlines' },
+                { year: 1982, cause: 'Weather', manufacturer: 'Boeing', region: 'North America', fatalities: 153, airline: 'Pan Am' },
+                { year: 2010, cause: 'CFIT', manufacturer: 'Airbus', region: 'Asia', fatalities: 152, airline: 'Airblue' },
+                { year: 2009, cause: 'Pilot/ATC Error', manufacturer: 'Airbus', region: 'Indian Ocean', fatalities: 152, airline: 'Yemenia' },
+                { year: 2015, cause: 'Pilot/ATC Error', manufacturer: 'Airbus', region: 'Europe', fatalities: 150, airline: 'Germanwings' },
+                { year: 1989, cause: 'Mechanical Failure', manufacturer: 'Ilyushin', region: 'North America', fatalities: 150, airline: 'Cubana de Aviación' },
+                { year: 2005, cause: 'Mechanical Failure', manufacturer: 'Boeing', region: 'Asia', fatalities: 149, airline: 'Mandala Airlines' },
+                { year: 2004, cause: 'Pilot/ATC Error', manufacturer: 'Boeing', region: 'Africa', fatalities: 148, airline: 'Flash Airlines' },
+                { year: 1985, cause: 'CFIT', manufacturer: 'Boeing', region: 'Europe', fatalities: 148, airline: 'Iberia Airlines' },
+                { year: 1980, cause: 'CFIT', manufacturer: 'Boeing', region: 'Europe', fatalities: 146, airline: 'Dan-Air' },
+                { year: 2001, cause: 'CFIT', manufacturer: 'Tupolev', region: 'Asia', fatalities: 145, airline: 'Vladivostok Air' },
+                { year: 1996, cause: 'Pilot/ATC Error', manufacturer: 'Boeing', region: 'Africa', fatalities: 144, airline: 'ADC Airlines' },
+                { year: 1989, cause: 'CFIT', manufacturer: 'Boeing', region: 'Atlantic', fatalities: 144, airline: 'Independent Air' },
+                { year: 1978, cause: 'Pilot/ATC Error', manufacturer: ['Boeing', 'Cessna'], region: 'North America', fatalities: 144, airline: 'Pacific Southwest Airlines / Private aircraft' },
+                { year: 2000, cause: 'Pilot/ATC Error', manufacturer: 'Airbus', region: 'Middle East', fatalities: 143, airline: 'Gulf Air' },
+                { year: 1988, cause: 'CFIT', manufacturer: 'Boeing', region: 'South America', fatalities: 143, airline: 'Avianca' },
+                { year: 2003, cause: 'Pilot/ATC Error', manufacturer: 'Boeing', region: 'Africa', fatalities: 141, airline: 'UTA' },
+                { year: 1996, cause: 'CFIT', manufacturer: 'Tupolev', region: 'Europe', fatalities: 141, airline: 'Vnukovo Airlines' },
+                { year: 1995, cause: 'Mechanical Failure', manufacturer: 'Lockheed', region: 'Africa', fatalities: 141, airline: 'Trans Service Airlift' },
+                { year: 1992, cause: 'CFIT', manufacturer: 'Boeing', region: 'Asia', fatalities: 141, airline: 'China Southern Airlines' },
+                { year: 2023, cause: 'Pilot/ATC Error', manufacturer: 'Ilyushin', region: 'Africa', fatalities: 140, airline: 'Malian Air Force' },
+                { year: 2015, cause: 'Mechanical Failure', manufacturer: 'Lockheed', region: 'Asia', fatalities: 139, airline: 'Indonesian Air Force' },
+                { year: 1975, cause: 'Mechanical Failure', manufacturer: 'Lockheed', region: 'Asia', fatalities: 138, airline: 'US Air Force' },
+                { year: 1985, cause: 'Weather', manufacturer: 'Lockheed', region: 'North America', fatalities: 137, airline: 'Delta Air Lines' },
+                { year: 1982, cause: 'CFIT', manufacturer: 'Boeing', region: 'South America', fatalities: 137, airline: 'Viação Aérea São Paulo' },
+                { year: 1991, cause: 'Mechanical Failure', manufacturer: 'Lockheed', region: 'Asia', fatalities: 135, airline: 'Indonesian Air Force' },
+                { year: 1993, cause: 'Pilot/ATC Error', manufacturer: ['Tupolev', 'Sukhoi'], region: 'Middle East', fatalities: 133, airline: 'Iran Air Tours / Iranian Air Force' },
+                { year: 1988, cause: 'CFIT', manufacturer: 'Boeing', region: 'Asia', fatalities: 133, airline: 'Indian Airlines' },
+                { year: 2022, cause: 'Undetermined', manufacturer: 'Boeing', region: 'Asia', fatalities: 132, airline: 'China Eastern Airlines' },
+                { year: 1994, cause: 'Mechanical Failure', manufacturer: 'Boeing', region: 'North America', fatalities: 132, airline: 'USAir' }
+            ];
+
+            const totalFatalities = crashData.reduce((acc, crash) => acc + crash.fatalities, 0);
+            document.getElementById('totalFatalities').textContent = `${totalFatalities.toLocaleString()}+`;
+
+            const colors = ['#ffa600', '#ff764a', '#ef5675', '#bc5090', '#7a5195', '#374c80', '#003f5c'];
+
+            function wrapLabel(str, maxLen = 16) {
+                if (str.length <= maxLen) return str;
+                const words = str.split(' ');
+                const lines = [];
+                let currentLine = '';
+                for (const word of words) {
+                    if (currentLine.length > 0 && (currentLine + ' ' + word).length > maxLen) {
+                        lines.push(currentLine.trim());
+                        currentLine = word;
+                    } else {
+                        currentLine = (currentLine + ' ' + word).trim();
+                    }
+                }
+                if (currentLine) lines.push(currentLine);
+                return lines;
+            }
+
+            const tooltipTitleCallback = (tooltipItems) => {
+                const item = tooltipItems[0];
+                let label = item.chart.data.labels[item.dataIndex];
+                if (Array.isArray(label)) {
+                    return label.join(' ');
+                }
+                return label;
+            };
+
+            const defaultChartOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#e5e7eb'
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            title: tooltipTitleCallback
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        ticks: { color: '#d1d5db' },
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                    },
+                    x: {
+                        ticks: { color: '#d1d5db' },
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                    }
+                }
+            };
+            
+            const crashesByDecade = crashData.reduce((acc, crash) => {
+                const decade = Math.floor(crash.year / 10) * 10;
+                const decadeLabel = `${decade}s`;
+                acc[decadeLabel] = (acc[decadeLabel] || 0) + 1;
+                return acc;
+            }, {});
+
+            const sortedDecades = Object.keys(crashesByDecade).sort();
+            new Chart(document.getElementById('crashesByDecadeChart'), {
+                type: 'bar',
+                data: {
+                    labels: sortedDecades,
+                    datasets: [{
+                        label: 'Number of Incidents',
+                        data: sortedDecades.map(decade => crashesByDecade[decade]),
+                        backgroundColor: colors.slice(0, sortedDecades.length),
+                        borderColor: 'rgba(255, 255, 255, 0.2)',
+                        borderWidth: 1
+                    }]
+                },
+                options: defaultChartOptions
+            });
+
+            const causes = crashData.reduce((acc, crash) => {
+                let cause = crash.cause.split('/')[0];
+                if(cause === 'Undetermined') cause = 'Other/Undetermined';
+                if(cause === 'CFIT') cause = 'Pilot/ATC Error';
+                if(cause === 'Hostile Action') cause = 'Terrorism/Hostile Action';
+                 if(cause === 'Terrorism') cause = 'Terrorism/Hostile Action';
+                acc[cause] = (acc[cause] || 0) + 1;
+                return acc;
+            }, {});
+
+            new Chart(document.getElementById('causesChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(causes),
+                    datasets: [{
+                        label: 'Crash Causes',
+                        data: Object.values(causes),
+                        backgroundColor: colors,
+                        hoverOffset: 4
+                    }]
+                },
+                options: { ...defaultChartOptions, scales: {} }
+            });
+
+            const manufacturers = crashData.reduce((acc, crash) => {
+                const mans = Array.isArray(crash.manufacturer) ? crash.manufacturer : [crash.manufacturer];
+                mans.forEach(man => {
+                    let name = man;
+                    if (man === 'McDonnell Douglas' || man === 'Douglas') name = 'McDonnell Douglas';
+                    if (man.includes('Ilyushin')) name = 'Ilyushin';
+                    if (man.includes('Tupolev')) name = 'Tupolev';
+                    acc[name] = (acc[name] || 0) + 1;
+                });
+                return acc;
+            }, {});
+
+            const manufacturerEntries = Object.entries(manufacturers).sort((a, b) => b[1] - a[1]).slice(0, 10);
+            new Chart(document.getElementById('manufacturerChart'), {
+                type: 'bar',
+                data: {
+                    labels: manufacturerEntries.map(entry => wrapLabel(entry[0])),
+                    datasets: [{
+                        label: 'Number of Incidents',
+                        data: manufacturerEntries.map(entry => entry[1]),
+                        backgroundColor: colors.slice(0, 10).reverse(),
+                    }]
+                },
+                options: {
+                    ...defaultChartOptions,
+                    indexAxis: 'y',
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            ticks: { color: '#d1d5db' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        },
+                        y: {
+                             ticks: { color: '#d1d5db' },
+                             grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        }
+                    }
+                }
+            });
+
+            const regions = crashData.reduce((acc, crash) => {
+                 let region = crash.region;
+                 if (region === 'Atlantic' || region === 'Indian Ocean') region = 'Ocean/Remote';
+                 if (region === 'Antarctica') region = 'Ocean/Remote';
+                 acc[region] = (acc[region] || 0) + 1;
+                 return acc;
+            }, {});
+            const regionEntries = Object.entries(regions).sort((a, b) => b[1] - a[1]);
+            new Chart(document.getElementById('regionChart'), {
+                type: 'bar',
+                data: {
+                    labels: regionEntries.map(entry => entry[0]),
+                    datasets: [{
+                        label: 'Number of Incidents by Region',
+                        data: regionEntries.map(entry => entry[1]),
+                        backgroundColor: colors,
+                    }]
+                },
+                options: {
+                    ...defaultChartOptions,
+                    indexAxis: 'y',
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            ticks: { color: '#d1d5db' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        },
+                        y: {
+                             ticks: { color: '#d1d5db' },
+                             grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        }
+                    }
+                }
+            });
+
+            const airlines = crashData.reduce((acc, crash) => {
+                const airlinesInvolved = crash.airline.split(' / ').map(a => a.trim());
+                airlinesInvolved.forEach(airline => {
+                    acc[airline] = (acc[airline] || 0) + 1;
+                });
+                return acc;
+            }, {});
+
+            const airlineEntries = Object.entries(airlines).sort((a, b) => b[1] - a[1]).slice(0, 10);
+            new Chart(document.getElementById('airlinesChart'), {
+                type: 'bar',
+                data: {
+                    labels: airlineEntries.map(entry => wrapLabel(entry[0])),
+                    datasets: [{
+                        label: 'Number of Incidents',
+                        data: airlineEntries.map(entry => entry[1]),
+                        backgroundColor: colors,
+                    }]
+                },
+                options: {
+                    ...defaultChartOptions,
+                    indexAxis: 'y',
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            ticks: { color: '#d1d5db' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        },
+                        y: {
+                            ticks: { color: '#d1d5db' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        }
+                    }
+                }
+            });
+
+            const generateInsightsBtn = document.getElementById('generateInsightsBtn');
+            const manufacturerInsightsDiv = document.getElementById('manufacturerInsights');
+            const insightsTitle = document.getElementById('insightsTitle');
+            const insightsContent = document.getElementById('insightsContent');
+            const insightsLoading = document.getElementById('insightsLoading');
+
+            generateInsightsBtn.addEventListener('click', async () => {
+                manufacturerInsightsDiv.classList.remove('hidden');
+                insightsContent.innerHTML = '';
+                insightsLoading.classList.remove('hidden');
+
+                const topManufacturer = manufacturerEntries[0][0];
+                insightsTitle.textContent = `Insights for ${topManufacturer}:`;
+
+                const manufacturerSpecificCrashes = crashData.filter(crash => {
+                    const mans = Array.isArray(crash.manufacturer) ? crash.manufacturer : [crash.manufacturer];
+                    return mans.includes(topManufacturer);
+                });
+
+                const prompt = `Based on the following historical aviation accident data related to the manufacturer "${topManufacturer}", provide a concise summary of their safety record and any notable trends or common accident types associated with their aircraft. Focus on the data for the 100 deadliest crashes since 1975.
+
+                Data for ${topManufacturer}:
+                ${JSON.stringify(manufacturerSpecificCrashes, null, 2)}
+
+                Please identify:
+                - Overall number of incidents in this dataset.
+                - Any predominant causes of crashes (e.g., mechanical, pilot error, external factors).
+                - Any specific time periods (decades) where incidents were more frequent.
+                - Any general safety trends or observations based on this limited dataset.
+                `;
+
+                let chatHistory = [];
+                chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+
+                const payload = { contents: chatHistory };
+                const apiKey = "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const result = await response.json();
+
+                    if (result.candidates && result.candidates.length > 0 &&
+                        result.candidates[0].content && result.candidates[0].content.parts &&
+                        result.candidates[0].content.parts.length > 0) {
+                        const text = result.candidates[0].content.parts[0].text;
+                        insightsContent.innerHTML = text.replace(/\n/g, '<br>');
+                    } else {
+                        insightsContent.textContent = 'Failed to generate insights. Unexpected API response.';
+                    }
+                } catch (error) {
+                    console.error('Error calling Gemini API:', error);
+                    insightsContent.textContent = 'Error generating insights. Please try again.';
+                } finally {
+                    insightsLoading.classList.add('hidden');
+                }
+            });
+        });
+    </script>
+
+</body>
+</html>
